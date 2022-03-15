@@ -1,0 +1,27 @@
+.audio {
+	&-react-recorder__canvas {
+		height: 8rem;
+		background-color: rgb(200, 200, 200);
+		max-width: 100%;
+	}
+
+	&-recorder {
+		&-section {
+			padding-bottom: 0.75rem;
+
+			audio {
+				max-width: 100%;
+			}
+		}
+
+		&-text {
+			&--main {
+				font-size: 1.25rem;
+			}
+
+			&--sub {
+				color: rgba(black, 0.45);
+			}
+		}
+	}
+}

@@ -1,68 +1,146 @@
+/* eslint-disable eqeqeq */
 import React from 'react'
-import AudioReactRecorder, { RecordState } from 'audio-react-recorder'
 import axios from 'axios'
-import './style/App.scss'
+import { Steps, Button, Modal } from 'antd'
+import { CheckCircleTwoTone, CloseCircleTwoTone } from '@ant-design/icons'
+import NameStep from './components/name-step'
+import AudioStep from './components/audio-step'
+import Loader from './components/loader'
 
 function App() {
 	const [state, setState] = React.useState({
 		name: '',
-		isRecording: false,
-		recordState: null,
-		audioSrc: null,
-		audioBlob: null,
-		formMsg: null,
-		msgType: null,
-		isLoading: false
+		audios: [],
+		currentStep: 0
 	})
+	const [allowNextStep, setAllowNextStep] = React.useState(false)
 
-	const handleNameChange = e => {
-		setState({ ...state, name: e.target.value })
+	const updateName = ({ target: { value } }) => {
+		setState({ ...state, name: value })
 	}
 
-	const handleButtonClick = e => {
-		if (state.isRecording) {
-			setState({ ...state, isRecording: false, recordState: RecordState.STOP })
-		} else {
-			setState({ ...state, isRecording: true, recordState: RecordState.START })
+	const getUpdateAudioFunc = i => data => {
+		var newAudios = [...state.audios]
+		newAudios[i] = {
+			src: data.url,
+			blob: data.blob
 		}
+		setState({ ...state, audios: newAudios })
 	}
 
-	const handleRecordFinish = data => {
-		setState({ ...state, audioSrc: data.url, audioBlob: data.blob })
-	}
+	const handleSubmit = async () => {
+		const modal = Modal.info({
+			content: <Loader fontSize="4.8rem" />,
+			icon: null,
+			bodyStyle: { textAlign: 'center' },
+			okButtonProps: { style: { display: 'none' } },
+			maskClosable: false
+		})
 
-	const handleSubmit = async e => {
-		e.preventDefault()
-		setState({ ...state, isLoading: true })
-
-		let formData = new FormData()
+		var formData = new FormData()
 		formData.append('username', state.name)
-		formData.append('content', state.audioBlob)
+
+		state.audios.forEach((audio, i) => formData.append(`content${i}`, audio.blob))
 
 		try {
-			const response = await axios.post('http://124.158.1.125:8907/save_file_kws', formData)
-
-			setState({ ...state, formMsg: response.data.response, msgType: 'success', isLoading: false })
+			const response = await axios.post('...', formData)
+			modal.update({
+				content: response.data.response,
+				icon: <CheckCircleTwoTone twoToneColor="#52c41a" />,
+				bodyStyle: { textAlign: 'left' },
+				okButtonProps: { style: { display: 'block' } }
+			})
 		} catch (error) {
-			const msgType = 'error'
-
 			if (error.response) {
-				setState({ ...state, formMsg: error.response.data.message, msgType, isLoading: false })
+				modal.update({
+					content: error.response.data.message,
+					icon: <CloseCircleTwoTone twoToneColor="#ec2e5e" />,
+					bodyStyle: { textAlign: 'left' },
+					okButtonProps: { style: { display: 'block' } }
+				})
 			} else {
 				console.log(error)
-				setState({ ...state, formMsg: 'Có lỗi đã xảy ra. Vui lòng thử lại sau', msgType, isLoading: false })
+				modal.update({
+					content: 'Có lỗi đã xảy ra. Vui lòng thử lại sau',
+					icon: <CloseCircleTwoTone twoToneColor="#ec2e5e" />,
+					bodyStyle: { textAlign: 'left' },
+					okButtonProps: { style: { display: 'block' } }
+				})
 			}
 		}
 	}
 
-	const clearMsg = () => {
-		setState({ ...state, formMsg: null })
+	const keywords = ['Hey CiCi', 'Hey CMC']
+
+	const numberOfSteps = 4
+	const steps = [
+		{
+			description: 'Tên người nói',
+			content: <NameStep updateName={updateName} name={state.name} setAllowNextStep={setAllowNextStep} />
+		}
+	].concat(
+		(() => {
+			var audioSteps = []
+			for (let i = 0; i < numberOfSteps; i++) {
+				audioSteps.push({
+					description: `File audio ${i + 1}`,
+					content: (
+						<AudioStep
+							updateAudioData={getUpdateAudioFunc(i)}
+							audioSrc={state.audios[i]?.src}
+							setAllowNextStep={setAllowNextStep}
+							keyword={keywords[Math.floor(i / 2)]}
+							distance={i % 2 == 0 ? 'xa' : 'gần'}
+						/>
+					)
+				})
+			}
+			return audioSteps
+		})()
+	)
+
+	const nextStep = () => {
+		setState(state => ({ ...state, currentStep: state.currentStep + 1 }))
+	}
+
+	const prevStep = () => {
+		setState(state => ({ ...state, currentStep: state.currentStep - 1 }))
+	}
+
+	const getStepTitle = stepIndex => {
+		return state.currentStep > stepIndex
+			? 'Hoàn thành'
+			: state.currentStep < stepIndex
+			? 'Chưa thực hiện'
+			: 'Đang thực hiện'
 	}
 
 	return (
 		<div className="app">
-			<div className="app-container">
-				{state.formMsg ? (
+			<Steps className="app-steps-section" current={state.currentStep}>
+				{steps.map((step, i) => (
+					<Steps.Step key={step.description} title={getStepTitle(i)} description={step.description} />
+				))}
+			</Steps>
+			<div className="app-steps-section app-steps-section--center">{steps[state.currentStep].content}</div>
+			<div className="app-steps-section app-steps-section--right">
+				{state.currentStep > 0 && (
+					<Button style={{ margin: '0 8px' }} onClick={prevStep}>
+						Quay lại
+					</Button>
+				)}
+				{state.currentStep < steps.length - 1 && (
+					<Button type="primary" onClick={nextStep} disabled={!allowNextStep}>
+						Tiếp theo
+					</Button>
+				)}
+				{state.currentStep == steps.length - 1 && (
+					<Button type="primary" onClick={handleSubmit} disabled={!allowNextStep}>
+						Gửi
+					</Button>
+				)}
+			</div>
+			{/* {state.formMsg ? (
 					<div className="app-section">
 						<div className={`app-recorder-form__msg app-recorder-form__msg--${state.msgType}`}>
 							{state.formMsg}
@@ -118,14 +196,7 @@ function App() {
 				</div>
 
 				<div className="app-section">
-					<div className="app-spinner" animating={`${state.isLoading}`}>
-						<div></div>
-						<div></div>
-						<div></div>
-						<div></div>
-					</div>
-				</div>
-			</div>
+				</div> */}
 		</div>
 	)
 }

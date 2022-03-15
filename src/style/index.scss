@@ -1,0 +1,37 @@
+@import 'base/_reset.scss';
+
+@import 'components/name-step.scss';
+@import 'components/audio-step.scss';
+
+.app {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+
+	&-steps-section {
+		padding-bottom: 2rem;
+		width: 70%;
+		max-width: 60rem;
+
+		&--center {
+			text-align: center;
+			padding: 1rem 0 4.5rem 0;
+		}
+
+		&--right {
+			text-align: right;
+		}
+	}
+}
+
+@media (max-width: 574px) {
+	.app-steps-section {
+		padding-bottom: 1rem;
+
+		&--center {
+			padding: 1.5rem 0 2.5rem 0;
+		}
+	}
+}
